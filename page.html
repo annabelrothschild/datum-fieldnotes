@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+  
+  <head>
+    <base target="_top">
+  </head>
+  <body>
+    <base target="_top">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script>
+      var globalRow = 0;
+      var globalNote = 0
+      /**
+       * This HTML is directly copied from the previous version of Data Tool
+       * loadData function calls the loadCell function in the google script
+       * It handles the return values with the onSucess and onFailure handlers
+       * This function is called when the sidebar loads originally and then is called again every time the success handler finishes running
+       * 
+       * 
+       * 
+       * Want to temporarily half, at times when onEdit is running 
+      */
+      function loadData() {
+        console.log("Reached loadData");
+        google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).loadCell();
+      }
+      /**
+       * onSuccess function acts as the success handler for the load data function
+       * It updates the sidebar information based on the cell object returned from the loadCell function in the google script
+      */
+      function onSuccess(cell) {
+        console.log("Reached onSuccess");
+        console.log('onSuccess handler called with cell history: ', cell.history)
+        var list = document.getElementById('historyList');
+        globalCell = cell;
+        console.log(globalCell)
+        document.getElementById('rowNum').innerHTML = cell.row;
+        document.getElementById('colNum').innerHTML = cell.col;
+        document.getElementById('currValue').innerHTML = cell.currValue;
+        var fragment = document.createDocumentFragment();
+        if (cell.history.length == 0) {
+          list.innerHTML = `<span style="padding:10px; font-size: 18px">No session history</span>`;
+        }
+        if(cell.cellChanged == 'true') {
+          fragment.replaceChildren();
+          list.innerHTML = '';
+        }
+        if (cell.history.length > 0 ) {
+          list.innerHTML = '';
+          if(cell.cellChanged) {
+            cell.history.forEach(historyObj => {
+              createBlock(historyObj, fragment);
+            });
+          } else {
+            let historyObj = cell.history[cell.history.length-1];
+            createBlock(historyObj, fragment);
+          }
+        }
+        list.appendChild(fragment);
+        loadData();
+      }
+      /**
+       * onFailure function is the failure handler for the loadData function
+       * It produces an alert if there is an error
+      */
+      function onFailure(error) {
+        console.log("Reached onFailure");
+        alert(error)
+      }
+      /**
+       * Function to trigger viewNotes
+       */
+      function noteView() {
+        google.script.run.loadCell();
+        loadData();
+        google.script.run.viewNotes()
+      }
+      /**
+       * Function for creating a general note, will create a new log entry with only cell and note
+       */
+      function addGeneralNote() {
+        document.getElementById("myModal").style.display = "block";
+        globalNote = 0
+      }
+      /**
+       * Function for creating a note specific to an entry in the log
+      */
+      function addNote(row) {
+        document.getElementById("myModal").style.display = "block";
+        globalNote = 1
+        globalRow = row;
+      }
+      
+      function noteDisplay() {
+        console.log("reached plea for help")
+        var note = document.getElementById("notesBox").value
+        document.getElementById("notesBox").value = ""
+        if (globalNote == 0) {
+            google.script.run.addGeneralNote(note);
+        } else {
+          var row = globalRow;
+          google.script.run.writeNote(row, note)
+        }
+        modalHide()
+      }
+      /**
+       * createBlock function creates the html for each history block on the side bar
+      */
+      function createBlock(historyObj, fragment) {
+        console.log("Reached createBlock");
+        let listItem = document.createElement('div');
+        listItem.innerHTML = 
+        `<div style="border: 1px solid black; word-wrap: break-word; background-color: rgba(155, 189, 222, .4); margin-bottom: 20px; display: flex; flex-direction: column; border-radius: 10px; padding: 20px; content-align: center;">
+        <span style="margin-bottom:10px; font-family: Arial; font-weight: bold;">Log Number: ${historyObj.row}</span>
+          <span style=" font-family: Arial; margin-bottom:10px;">${new Date(historyObj.timestamp).toLocaleString('en-us')}</span>
+          <span style="font-family: Arial; margin-bottom:5px;">Value: ${historyObj.newValue}</span>
+          <span style="font-family: Arial; margin-bottom:5px;">Function: ${historyObj.formula || 'Manual Entry'}</span>
+          <span style="font-family: Arial; margin-bottom:5px;font-size: 16px">Previous Value: ${historyObj.oldValue}</span>
+          <span style="font-family: Arial; font-size: 16px">User: ${historyObj.user}</span>
+          <div style = "margin-top: 10px">
+          
+          <button style=" font-family: Arial; content-align: center; border: 1px solid black; cursor: pointer; border-radius: 15px; padding: 10px;" id = "notes" onclick = "addNote(${historyObj.row})" type= "button"> Add Note to Change </button>
+          </div>
+        </div>`
+        fragment.prepend(listItem);
+      }
+      function modalHide(){
+        document.getElementById("myModal").style.display = "none";
+      }
+    </script>
+  </head>
+  <body onload="loadData()">
+    <div id="top-bar" style="margin-bottom: 20px; border-bottom: 1px solid; padding:5px">
+      <div style=" font-family: Arial; display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 18px">
+      <span>Row <span id="rowNum"></span>, Column <span id="colNum"></span></span>
+      <a href="https://sites.gatech.edu/datum-fieldnotes/" target="_blank">Help</a>
+      </div>
+      <style>
+
+#myModal {
+  display: none;
+}
+
+/* Modal Content/Box */
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto; /* 15% from the top and centered */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%; /* Could be more or less, depending on screen size */
+}
+
+/* The Close Button */
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+} 
+    </style>
+      <div style="display:flex; flex-direction:column; margin-bottom:5px; font-size: 18px; font-family: Arial">
+        <span style="margin-bottom:5px;">Current Value: <span id="currValue"></span></span>
+        <div class="buttonBlock">
+          <button class="button" style="display: inline-block; font-family: Arial; border: 1px solid black; cursor: pointer; border-radius: 15px; padding: 10px; width: 100px" id = "notes" onclick = "noteView()" type= "button"> View Notes </button>
+          <button class="button" style="display: inline-block; font-family: Arial; content-align: center; border: 1px solid black; width: 100px; cursor: pointer; border-radius: 15px; padding: 10px;" id = "notes" onclick = "addGeneralNote()" type= "button"> Add Notes </button>
+        </div>
+      </div>
+    </div>
+    <div id="myModal" class="modal">
+        <!-- Modal content -->
+        <div class="modal-content" style="justify-content: center; border: 1px solid black;border-radius: 10px; padding: 10px; width:250px; background-color: rgba(188, 218, 249, .2);">
+        <span class="close" onclick="modalHide()">&times;</span>
+        <p style="font-family: Arial; justify-content: center;">Enter Note</p>
+        <textarea style="border: 1px solid black; cursor: pointer; border-radius: 15px; padding: 10px; height:100px; width: 225px; max-width:225px; min-width:225px; font-size:10pt; font-family: Arial" type="text" id="notesBox" name="notes" TextMode="MultiLine"></textarea>
+        <button id = "Save" onclick = "noteDisplay()" type= "button"> Save</button>
+        </div>
+    </div>
+    <div id="historyList"></div>
+    
+  </body>
+  <a style="position: fixed;bottom: 0px;" href="https://sites.gatech.edu/datum-fieldnotes/datum-fieldnotes/privacy-policy/" target="_blank">Privacy Policy</a>
+</html>
