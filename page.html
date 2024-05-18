@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-  
   <head>
     <base target="_top">
   </head>
@@ -90,9 +89,10 @@
         globalNote = 1
         globalRow = row;
       }
-      
+      /**
+       * Function to pull up the input box for notes
+       */
       function noteDisplay() {
-        console.log("reached plea for help")
         var note = document.getElementById("notesBox").value
         document.getElementById("notesBox").value = ""
         if (globalNote == 0) {
