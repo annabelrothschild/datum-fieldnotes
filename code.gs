@@ -16,7 +16,10 @@ function onOpen() {
     protection.setDomainEdit(false);
   }
 }
-  
+/**
+ * Main function for writing notes; called from page.html in noteDisplay when a 
+ * change specific note is created, and from the addGeneralNote function in this file for a general note.
+ */
 function writeNote(row, note){
   console.log("reached write note")
   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
@@ -30,7 +33,6 @@ function writeNote(row, note){
   var ss = SpreadsheetApp.getActiveSheet()
   var cell = ss.getCurrentCell();
   cell.setBackground("red")
-  // cell.setBorder(true, true, true, true, false, false, "red", null);
   }
 
 /**
@@ -72,7 +74,6 @@ function addGeneralNote(note){
   cell = sheet.getCurrentCell().getA1Notation();
   var user = Session.getActiveUser().getEmail().toString();
   var timestamp = new Date();
-
   if(sheet != 'Log' && sheet != "Datasheet") {
     log.appendRow([timestamp, cell, sheet.getName(), "", "", "", user]);
   }
@@ -87,6 +88,7 @@ function addGeneralNote(note){
  * It then sets the initial global variable values, which are stored as properties
  * Properties can only store strings, so objects are converted to JSON strings first
  * It generates the content for the sidebar by creating an HTMLOutput from the Page HTML file
+ * Also generates the Datasheets questions as a new sheet
  */
 function showSidebar() {
   console.log("Reached showSidebar");
@@ -156,20 +158,22 @@ function loadCell() {
   console.log('loadCell return obj: ', returnObj)
   return returnObj;
 }
-var changeType = null;
-function onChange(e) {
-  console.log("Reached onChange")
-  changeType = e.changeType;
-  if (changeType != "FORMAT" && changeType != "EDIT") {
-    var user = PropertiesService.getScriptProperties().getProperty("user");
-    var sheet = SpreadsheetApp.getActiveSheet();
-    var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
-    var timestamp = new Date();
-    if(sheet != 'Log' && sheet != "Datasheet") {
-      log.appendRow([timestamp, "", sheet.getName(), "", sheet.getCurrentCell().getValue(), changeType, user]);
-    }
-  }
-}
+/**
+ * Work in progress function for logging change types as a means of keeping track of row/column deletion
+ */
+// var changeType
+// function onChange(e) {
+//   console.log("Reached onChange")
+//   changeType = e.changeType;
+//   var user = PropertiesService.getScriptProperties().getProperty("user");
+//   var sheet = SpreadsheetApp.getActiveSheet();
+//   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
+//   var timestamp = new Date();
+//   if(sheet != 'Log' && sheet != "Datasheet") {
+//     log.appendRow([timestamp, "", sheet.getName(), "", sheet.getCurrentCell().getValue(), changeType, user]);
+//   }
+// }
+
 /**
  * onEdit function is automatically triggered by AppsScript when a change is made in the spreadsheet
  * The edit event object e is manipulated slightly
