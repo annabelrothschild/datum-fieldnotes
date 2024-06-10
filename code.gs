@@ -161,7 +161,7 @@ function loadCell() {
 /**
  * Work in progress function for logging change types as a means of keeping track of row/column deletion
  */
-// var changeType
+var changeType
 // function onChange(e) {
 //   console.log("Reached onChange")
 //   changeType = e.changeType;
