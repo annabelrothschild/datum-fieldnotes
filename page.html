@@ -2,21 +2,139 @@
 <html>
   <head>
     <base target="_top">
-  </head>
-  <body>
-    <base target="_top">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    <script>
+    <style>
+        body{
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          margin: 0;
+          padding: 0;
+          background-color: #f0f0f0;
+        }
+        
+        #sidebar{
+          display: grid;
+          grid-template-rows: auto 1fr auto;
+          min-height: 100vh;
+        }
+
+        #top-bar {
+          display: block;
+          grid-template-columns: 1fr auto; 
+          align-items: center;
+          padding: 10px 15px 5px;
+          border-bottom: 2px solid #ddd; /* Light gray border */
+        }
+
+        .top-bar1{
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          margin-bottom: 5px;
+        }
+
+        .top-bar1 > span:first-child { 
+          white-space: nowrap; 
+          width: 100%;
+        }
+
+        .buttonBlock {
+          display: flex;
+          grid-auto-flow: row; /* Align buttons horizontally */
+          gap: 5px; 
+        }
+
+        .button{
+          background-color: #555;
+          color: white;
+          padding: 5px 10px;
+          margin: 5px;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          transition: background-color 0.3s;
+        }
+
+        .button:hover{
+          background-color: #333;
+        }
+
+        #bottom-bar {
+          display: flex;
+          flex-direction: column;
+          paddng: 5px;
+          border-bottom: 2px solid #ddd;
+        }
+
+        #myModal {
+          display: block;
+          margin: 10px;
+        }
+
+        .modal-content {
+          border: 1px solid black;
+          border-radius: 10px; /* Optional: Rounded corners */
+          text-align: center;
+          background-color: white;
+        }
+
+        #borderBottom{
+          border-bottom: 2px solid #ddd;
+        }
+
+        #historyList{
+          margin: 5px;
+          padding: 5px;
+        }
+
+        #notesBox {
+          border: 1px solid black;
+          background-color: #f0f0f0;          
+          cursor: pointer;                 
+          border-radius: 10px;              
+          padding: 10px;
+          margin: 5px 5px;                     
+          height: 80px;                     
+          width: 225px;                 
+          font-size: 10pt;
+        }
+        
+        .history-item { 
+          border: 1px solid black; 
+          word-wrap: break-word; 
+          background-color: rgba(155, 189, 222, .4); 
+          margin: 10px;
+          display: flex;
+          flex-direction: column;
+          border-radius: 8px;
+          padding: 10px;
+          content-align: center;
+        }
+
+        .history-item span {
+          margin-bottom: 5px; 
+        }
+        
+        #help-links {
+          align-self: end; /* Align to bottom */
+          justify-self: end; /* Align to right */
+          margin-bottom: 5px;
+          margin-right: 10px; 
+        }
+
+        .history-item .bold-span {
+          font-weight: bold;
+        }
+
+    </style>
+      <script>
       var globalRow = 0;
-      var globalNote = 0
+      var globalNote = 0;
       /**
        * This HTML is directly copied from the previous version of Data Tool
        * loadData function calls the loadCell function in the google script
        * It handles the return values with the onSucess and onFailure handlers
        * This function is called when the sidebar loads originally and then is called again every time the success handler finishes running
-       * 
-       * 
-       * 
        * Want to temporarily half, at times when onEdit is running 
       */
       function loadData() {
@@ -24,166 +142,232 @@
         google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onFailure).loadCell();
       }
       /**
-       * onSuccess function acts as the success handler for the load data function
+       * onSuccess function acts as the success handler for the load data function 
        * It updates the sidebar information based on the cell object returned from the loadCell function in the google script
+       * Displays the cell's row, column, current value, and edit history.
+       * If no history exists, displays a "No session history" message.
+       * Calls 'loadData' again to keep the sidebar updated.
       */
       function onSuccess(cell) {
         console.log("Reached onSuccess");
-        console.log('onSuccess handler called with cell history: ', cell.history)
+        console.log('onSuccess handler called with cell history: ', cell.history);
+        
         var list = document.getElementById('historyList');
         globalCell = cell;
-        console.log(globalCell)
-        document.getElementById('rowNum').innerHTML = cell.row;
-        document.getElementById('colNum').innerHTML = cell.col;
+        console.log(globalCell);
+
+        document.getElementById('rowNum').textContent = cell.row;
+        document.getElementById('colNum').textContent = cell.col;
         document.getElementById('currValue').innerHTML = cell.currValue;
-        var fragment = document.createDocumentFragment();
-        if (cell.history.length == 0) {
-          list.innerHTML = `<span style="padding:10px; font-size: 18px">No session history</span>`;
-        }
-        if(cell.cellChanged == 'true') {
-          fragment.replaceChildren();
-          list.innerHTML = '';
-        }
-        if (cell.history.length > 0 ) {
-          list.innerHTML = '';
-          if(cell.cellChanged) {
-            cell.history.forEach(historyObj => {
-              createBlock(historyObj, fragment);
-            });
-          } else {
-            let historyObj = cell.history[cell.history.length-1];
+
+        const filteredHistory = cell.history.filter(entry => entry.cell === cell.id);
+
+        list.innerHTML = '';
+
+        if (filteredHistory.length === 0) {
+          list.innerHTML = `<span style="padding:10px; font-size: 15px">No session history</span>`;
+        }else{
+          const fragment = document.createDocumentFragment();
+          filteredHistory.forEach(historyObj => {
             createBlock(historyObj, fragment);
-          }
+          });
+          list.appendChild(fragment);
         }
-        list.appendChild(fragment);
         loadData();
       }
+      
       /**
        * onFailure function is the failure handler for the loadData function
        * It produces an alert if there is an error
       */
       function onFailure(error) {
         console.log("Reached onFailure");
-        alert(error)
+        alert(error);
       }
       /**
-       * Function to trigger viewNotes
+       * Triggers the 'viewNotes' function in the Google Apps Script to fetch notes for the current cell.
+       * Handles the returned notes with 'displayNotes' and 'onFailure' callbacks.
        */
       function noteView() {
-        google.script.run.loadCell();
-        loadData();
-        google.script.run.viewNotes()
+        google.script.run.withSuccessHandler(displayNotes).withFailureHandler(onFailure).viewNotes();
+      }
+
+      /**
+       * this function is a success handler for noteView
+       * clears current history list
+       * creates a note container
+       * if there are no notes, it displays a message to the user
+       * if there are notes, iterates through note objects and append note elemtns
+       * append note container to list
+       */
+      function displayNotes(notes){
+        let list = document.getElementById('historyList'); // Get the history list element
+        list.innerHTML = ''; // Clear existing history
+        let notesContainer = document.createElement('div');
+        notesContainer.id = 'notesDisplay';
+        if (notes.length === 0) {
+          notesContainer.innerHTML = `<span style="padding:10px; font-size: 18px">No notes found.</span>`;
+        } else {
+          notes.forEach(noteObj => {
+            let noteElement = document.createElement('div');
+            noteElement.innerHTML = `<div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 5px;">
+                ${noteObj.note.replace(/\n/g, '<br>')} <span style="font-size: 12px;">(by ${noteObj.user})</span>
+                </div>`;
+            notesContainer.appendChild(noteElement);
+          });
+        }
+
+        list.appendChild(notesContainer);
       }
       /**
        * Function for creating a general note, will create a new log entry with only cell and note
+       * sets 'globalNote' to 0 to indicate a general note.
        */
       function addGeneralNote() {
         document.getElementById("myModal").style.display = "block";
-        globalNote = 0
+        globalNote = 0;
       }
       /**
        * Function for creating a note specific to an entry in the log
+       * Sets 'globalNote' to 1 to indicate a change-specific note.
+       * Stores the row number of the change in 'globalRow'.
       */
       function addNote(row) {
         document.getElementById("myModal").style.display = "block";
-        globalNote = 1
+        globalNote = 1;
         globalRow = row;
       }
-      /**
-       * Function to pull up the input box for notes
-       */
-      function noteDisplay() {
-        var note = document.getElementById("notesBox").value
-        document.getElementById("notesBox").value = ""
-        if (globalNote == 0) {
-            google.script.run.addGeneralNote(note);
-        } else {
-          var row = globalRow;
-          google.script.run.writeNote(row, note)
+
+      // Event listener for color selection
+      document.getElementById("colorOptions").addEventListener("click", function(event) {
+        if (event.target.type === "radio" && event.target.name === "color") {
+          const selectedColor = event.target.value;
+          console.log("Selected color:", selectedColor);
+
+          google.script.run.setColor(selectedColor);
         }
-        modalHide()
+      });
+
+      /** 
+       * 'noteDisplay' handles saving the note entered in the modal dialog
+       * gets the note text and selected color
+       * If it's a general note (globalNote == 0), calls 'addGeneralNote' in Google Apps Script.
+       * If it's a change-specific note, calls 'writeNote' in Google Apps Script.
+       *After successful note saving, reloads data using 'loadData' and hides the modal.
+      */
+      function noteDisplay() {
+        var note = document.getElementById("notesBox").value;
+        document.getElementById("notesBox").value = "";
+        const selectedColor = document.querySelector('input[name="color"]:checked').value;
+        const noteData = {
+          row: globalRow, 
+          note: note
+        };
+        if (globalNote == 0) {    
+            // Promise chain
+            google.script.run
+              .withSuccessHandler(() => {
+                // Color setting successful
+                google.script.run
+                  .withSuccessHandler(function() {
+                    loadData();
+                    hideElement('myModal');
+                    console.log("reached addGeneralNote");
+                  })
+                  .addGeneralNote(note); 
+              })
+              .setColor(selectedColor);
+          } else {
+            google.script.run.withSuccessHandler(function () {
+              loadData(); // Reload data to update the sidebar
+              hideElement('myModal'); // Close the modal
+              console.log("reached writeNote");
+            }).writeNote(noteData);
+          }
       }
+
       /**
        * createBlock function creates the html for each history block on the side bar
+       * Creates an HTML element representing a single history entry.
+       * Takes a 'historyObj' and a DocumentFragment as input.
+       * Constructs the HTML structure for the history item, including log number, timestamp, values, user, etc.
+       * Adds an "Add Note to Change" button that calls 'addNote' with the corresponding row number.
+       * Prepends the created history item to the DocumentFragment.
       */
       function createBlock(historyObj, fragment) {
         console.log("Reached createBlock");
         let listItem = document.createElement('div');
         listItem.innerHTML = 
-        `<div style="border: 1px solid black; word-wrap: break-word; background-color: rgba(155, 189, 222, .4); margin-bottom: 20px; display: flex; flex-direction: column; border-radius: 10px; padding: 20px; content-align: center;">
-        <span style="margin-bottom:10px; font-family: Arial; font-weight: bold;">Log Number: ${historyObj.row}</span>
-          <span style=" font-family: Arial; margin-bottom:10px;">${new Date(historyObj.timestamp).toLocaleString('en-us')}</span>
-          <span style="font-family: Arial; margin-bottom:5px;">Value: ${historyObj.newValue}</span>
-          <span style="font-family: Arial; margin-bottom:5px;">Function: ${historyObj.formula || 'Manual Entry'}</span>
-          <span style="font-family: Arial; margin-bottom:5px;font-size: 16px">Previous Value: ${historyObj.oldValue}</span>
-          <span style="font-family: Arial; font-size: 16px">User: ${historyObj.user}</span>
-          <div style = "margin-top: 10px">
-          
-          <button style=" font-family: Arial; content-align: center; border: 1px solid black; cursor: pointer; border-radius: 15px; padding: 10px;" id = "notes" onclick = "addNote(${historyObj.row})" type= "button"> Add Note to Change </button>
-          </div>
-        </div>`
+        `
+          <div class="history-item">
+              <span class="bold-span">Log Number: ${historyObj.row}</span>
+              <span>${new Date(historyObj.timestamp).toLocaleString('en-us')}</span> 
+              <span>Value: ${historyObj.newValue}</span>
+              <span>Function: ${historyObj.formula || 'Manual Entry'}</span>
+              <span style="font-size: 16px">Previous Value: ${historyObj.oldValue}</span>  
+              <span style="font-size: 16px">User: ${historyObj.user}</span>
+              <button class="button" onclick="addNote(${historyObj.row})">Add Note to Change</button>
+          </div>`;
         fragment.prepend(listItem);
       }
-      function modalHide(){
-        document.getElementById("myModal").style.display = "none";
+
+      /** 
+       * Hides an HTML element by setting its display style to "none".
+       * Takes the element's ID as input.
+       * Uses the optional chaining operator (`?.`) to safely handle cases where the element might not exist.
+      */
+      function hideElement(elementID){
+        (document.getElementById(elementID) ?? {}).style.display = "none";
       }
+      /**
+       * calls viewSettings in google apps script file
+       */
+      function openSettings() {
+        google.script.run.viewSettings();
+      }
+
     </script>
   </head>
   <body onload="loadData()">
-    <div id="top-bar" style="margin-bottom: 20px; border-bottom: 1px solid; padding:5px">
-      <div style=" font-family: Arial; display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 18px">
-      <span>Row <span id="rowNum"></span>, Column <span id="colNum"></span></span>
-      <a href="https://sites.gatech.edu/datum-fieldnotes/" target="_blank">Help</a>
-      </div>
-      <style>
-
-#myModal {
-  display: none;
-}
-
-/* Modal Content/Box */
-.modal-content {
-  background-color: #fefefe;
-  margin: 15% auto; /* 15% from the top and centered */
-  padding: 20px;
-  border: 1px solid #888;
-  width: 80%; /* Could be more or less, depending on screen size */
-}
-
-/* The Close Button */
-.close {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-}
-
-.close:hover,
-.close:focus {
-  color: black;
-  text-decoration: none;
-  cursor: pointer;
-} 
-    </style>
-      <div style="display:flex; flex-direction:column; margin-bottom:5px; font-size: 18px; font-family: Arial">
-        <span style="margin-bottom:5px;">Current Value: <span id="currValue"></span></span>
-        <div class="buttonBlock">
-          <button class="button" style="display: inline-block; font-family: Arial; border: 1px solid black; cursor: pointer; border-radius: 15px; padding: 10px; width: 100px" id = "notes" onclick = "noteView()" type= "button"> View Notes </button>
-          <button class="button" style="display: inline-block; font-family: Arial; content-align: center; border: 1px solid black; width: 100px; cursor: pointer; border-radius: 15px; padding: 10px;" id = "notes" onclick = "addGeneralNote()" type= "button"> Add Notes </button>
+    <div id="sidebar">
+      <div id="top-bar">
+        <div>
+          <div class="top-bar1">
+            <span id="rowsColumns"><b>Row</b> <span id="rowNum"></span>, <b>Column</b> <span id="colNum"></span></span>
+            <br>
+            <span id="currentValue"><b>Current Value:</b> <span id="currValue"></span></span>
+          </div>
+          <div class="buttonBlock">
+            <button class="button" id="notes" onclick="noteView()" type="button">View Notes</button>
+            <button class="button" id="notes" onclick="addGeneralNote()" type="button">Add Notes</button>
+            <button class="button" id="settingsPage" onclick="openSettings()" type="button">Settings</button>
+          </div>
         </div>
       </div>
-    </div>
-    <div id="myModal" class="modal">
-        <!-- Modal content -->
-        <div class="modal-content" style="justify-content: center; border: 1px solid black;border-radius: 10px; padding: 10px; width:250px; background-color: rgba(188, 218, 249, .2);">
-        <span class="close" onclick="modalHide()">&times;</span>
-        <p style="font-family: Arial; justify-content: center;">Enter Note</p>
-        <textarea style="border: 1px solid black; cursor: pointer; border-radius: 15px; padding: 10px; height:100px; width: 225px; max-width:225px; min-width:225px; font-size:10pt; font-family: Arial" type="text" id="notesBox" name="notes" TextMode="MultiLine"></textarea>
-        <button id = "Save" onclick = "noteDisplay()" type= "button"> Save</button>
+
+      <div id="bottom-bar">
+        <div id="myModal" class="modal">
+          <div class="modal-content">
+            <div id="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 10px 5px">
+              <p style="font-family: Arial; margin: 0;">Enter Note</p>
+              <span class="close" style="cursor: pointer;" onclick="hideElement('myModal')">&times; </span>
+            </div> 
+            <textarea type="text" id="notesBox" name="notes" TextMode="MultiLine"></textarea>
+            <div id="colorOptions">
+                <input type="radio" id="red" name="color" value="red"> <label for="red">Red</label>
+                <input type="radio" id="yellow" name="color" value="yellow"> <label for="yellow">Yellow</label>
+                <input type="radio" id="green" name="color" value="green"> <label for="green">Green</label>
+            </div>
+            <button class="button" id="Save" onclick="noteDisplay()" type="button">Save</button>
+          </div>
         </div>
+        <div id="borderBottom"></div>
+        <div id="historyList"></div>
+      </div>
+      <div id="help-links">
+        <a href="https://sites.gatech.edu/datum-fieldnotes/datum-fieldnotes/privacy-policy/" target="_blank" >Privacy Policy</a>
+        <a href="https://sites.gatech.edu/datum-fieldnotes/" target="_blank">Help</a>
+      </div>
     </div>
-    <div id="historyList"></div>
-    
   </body>
-  <a style="position: fixed;bottom: 0px;" href="https://sites.gatech.edu/datum-fieldnotes/datum-fieldnotes/privacy-policy/" target="_blank">Privacy Policy</a>
 </html>
