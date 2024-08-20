@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+  </head>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    #Settings {
+      border: 1px solid black;
+      border-radius: 10px; 
+      background-color: #f0f0f0;
+      padding: 20px;
+      width: 400px; /
+    }
+
+    #settingsForm label {
+      display: inline-block; /* Labels inline with input fields */
+      width: 120px;          /* Adjust as needed */
+      text-align: left;    /* Align labels to the right */
+      margin-right: 10px;  /* Add space between labels and inputs */
+    }
+
+    #nameInputContainer {
+      padding: 20px
+    }
+
+    #settingsForm input[type="text"] {
+      width: 80%;
+      padding: 8px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    #settingsForm button {
+      background-color: #555; /* Gray background for the button */
+      color: white;
+      padding: 10 15 px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s; /* Smooth hover effect */
+    }
+
+    #settingsForm button:hover {
+      background-color: #444; /* Darker gray on hover */
+    }
+  </style>
+  <body>
+    <div id="Settings">
+      <form id="settingsForm">
+        <label><input type="radio" name="logChoice" value="name" onchage="toggleEmailRadio()"> Name</label><br>
+        <label><input type="radio" name="logChoice" value="email" checked> Email</label><br>
+        <div id="nameInputContainer" style="display: none;">
+          <label for="userName">Enter your name:</label>
+          <input type="text" id="userName" name="userName"> 
+          <label for="userEmail">Enter your own email:</label>
+          <input type="text" id="userEmail" name="userEmail">
+        </div>
+        <button type="button" onclick="saveSettings()">Save</button>
+      </form>
+    </div>
+    <script>
+      //event listener for radio buttons, when a radio button changes, it toggles visibility of the nameInputContainer
+      document.querySelectorAll('input[name="logChoice"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+          document.getElementById('nameInputContainer').style.display = this.value === 'name' ? 'block' : 'none';
+        });
+      });
+      /** 
+       * Gets form data from settingsForm
+       * converts the form data into an object using Object.fromEntries(formData.entries())
+       * Calls the saveUserPreference function in the Google Apps Script, passing the form data object
+       * Uses a success handler (google.script.host.close) to close the dialog after the settings are saved successfully.
+      */
+      function saveSettings() {
+        const form = document.getElementById('settingsForm');
+        const formData = new FormData(form);
+        google.script.run
+          .withSuccessHandler(google.script.host.close) // Close dialog on success
+          .saveUserPreference(Object.fromEntries(formData.entries()));
+      }
+    </script>
+  </body>
+</html>
