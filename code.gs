@@ -17,7 +17,7 @@ function onOpen() {
   }
 }
 
-/**unction for viewing settings (opens settings dialog)
+/**Function for viewing settings (opens settings dialog)
  * Loads HTML for the settings dialog
  * Displays the settings dialog
  * Log to indicate the form submission (for testing purposes)
@@ -48,37 +48,42 @@ function saveUserPreference(form) {
   });
 }
 
+
 /**
  * This function logs the users that have worked on the sheet to the Datasheet for Dataset Page
- * called by writeNote functions, showSidebar function, 
+ * called by onEdit, writeNote , and showSidebar function 
  */
 function logUniqueUsers(){
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const logSheet = spreadsheet.getSheetByName('Log');
-  const datasheet = spreadsheet.getSheetByName('Datasheet'); 
+  const datasheet = spreadsheet.getSheetByName('Datasheet for Dataset Use and Distribution'); 
 
-  /** Checks if there are entries in the 'Log' besides the header*
-   * Gets data from the 'Log' sheet, and uses a set to store unique user identifiers
-   * and logs the user email in the datasheet
-  */
-  if(logSheet.getLastRow() > 1){
-    const logData = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, 7).getValues();
+  if (logSheet.getLastRow() > 1) {
+    const logData = logSheet.getRange(2, 1, logSheet.getLastRow() - 1, logSheet.getLastColumn()).getValues(); // Get all columns
 
     const uniqueUsers = new Set();
 
     logData.forEach(row => {
-      const userEmail = row[6];
-      const userIdentifier = userEmail.split(":")[0].trim();
+      const userEntry = row[6]; // Get the user entry (email or name and email)
 
-      uniqueUsers.add(userIdentifier);
+      if (typeof userEntry === 'string') {
+        let userIdentifier;
+        if (userEntry.includes("(") && userEntry.includes(")")) {
+          // Extract the entire entry if name and email are present
+          userIdentifier = userEntry.substring(0, userEntry.indexOf(")")) + ")"; 
+        } else {
+          // Otherwise, use the entry as is (assuming it's just the email)
+          userIdentifier = userEntry;
+        }
+        uniqueUsers.add(userIdentifier);
+      } else {
+        console.warn("Unexpected value in userEntry:", userEntry);
+      }
     });
 
     const userList = Array.from(uniqueUsers);
     datasheet.getRange('B17').setValue(userList.join(", "));
-  }else{
-    datasheet.getRange('B17').clearContent(); 
   }
-  
 }
 
 /** function that sets the color into properties
@@ -101,32 +106,28 @@ function setColor(color){
  * Retrieves notes from the 'Log' sheet based on cell and sheet name.
  */
 function viewNotes(){
-  loadCell(); // Load information about the currently selected cell
+  loadCell();
   sheet = SpreadsheetApp.getActiveSheet();
   cell = sheet.getCurrentCell();
   sheet = sheet.getName();
   console.log("Reached viewNote");
   var ui = SpreadsheetApp.getUi();
-  //gets the data of the cell from the log sheet as well as the A1 notation of the cell
   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
   var data = log.getDataRange().getValues()
   var id = cell.getA1Notation();
   console.log("id: " + id)
-
   var noteList = '';
-  //checks if the log entry matches the selected cell and sheet
   for (row in data) {
     if (data[row][1] == id && data[row][2] == sheet) {
-      var note = data[row][8] //logs it in the 9th column of the Log Sheet
+      var note = data[row][9]
       if (note != "") {
         console.log(row)
-        noteList = noteList + note + "\n"; //appends the notes to the notelist which will be display with the model
+        noteList = noteList + note + "\n";
       }
     }
   }
   console.log("list" + noteList)
   
-  //creates the model and prints the notelist
   var htmlOutput = HtmlService.createHtmlOutput(
     '<textarea style="height:200px;width:250px;font-size:10pt;" type="text" id="notes" name="notes" TextMode="MultiLine"></textarea>').setWidth(300).setHeight(300).setContent(noteList.replace(/\n/g, "<br><br/>"))
     ui.showModalDialog(htmlOutput, "Notes")
@@ -136,10 +137,11 @@ function viewNotes(){
  * Main function for writing notes; called from page.html in noteDisplay when a 
  * change specific note is created, and from the addGeneralNote function in this file for a general note.
  */
+
 function writeNote(row, note){
   console.log("reached write note");
   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
-  log.getLastRow(); //gets the last row in the 'Log' sheet
+  log.getLastRow();
   var time = new Date();
   var user = Session.getActiveUser().getEmail(); // Get the user's email
 
@@ -149,14 +151,13 @@ function writeNote(row, note){
     const userEmail = PropertiesService.getScriptProperties().getProperty("userEmail");
     user = `${userName} (${userEmail})`; 
   }
-  //get the selected color or default to "yellow"
+
   color = PropertiesService.getScriptProperties().getProperty("colorSet") || "yellow";
   console.log("color: " + color);
 
-  var noteEntry = time + "\n" + note + "\n - " + user; //formatting the note in the column
+  var noteEntry = time + "\n" + note + "\n - " + user;
   console.log()
   console.log(noteEntry);
-  //appending the note in the notes column
   if (log.getRange(row, 9).getDisplayValue() != "") {
     log.getRange(row, 9).setValue(log.getRange(row, 9).getValue() + "\n" + noteEntry)
   } else {
@@ -169,9 +170,9 @@ function writeNote(row, note){
 }
 
 /**
- * Script side function for general notes not tied to a specific cell change. 
- * Creates a new log entry with a change
+ * Script side function for general notes. Will create a new log entry with a change
  */
+
 function addGeneralNote(note){
   console.log("adding general note");
   color = PropertiesService.getScriptProperties().getProperty("colorSet");
@@ -181,15 +182,13 @@ function addGeneralNote(note){
   cell = sheet.getCurrentCell().getA1Notation();
   var user = Session.getActiveUser().getEmail().toString();
   const logPreference = PropertiesService.getScriptProperties().getProperty("logPreference");
-  
   if (logPreference === "name") {
     const userName = PropertiesService.getScriptProperties().getProperty("userName");
     const userEmail = PropertiesService.getScriptProperties().getProperty("userEmail");
     user = `${userName} (${userEmail})`; 
   }
   var timestamp = new Date();
-  
-  if(sheet != 'Log' && sheet != "Datasheet") {
+  if(sheet != 'Log' && sheet != "Datasheet for Dataset Use and Distribution") {
     log.appendRow([timestamp, cell, sheet.getName(), "", "", "", user, color]);
   }
   var rowNum = log.getLastRow();
@@ -198,35 +197,30 @@ function addGeneralNote(note){
 
 
 /**
- * showSidebar function runs when the 'Open Data Tool' button is selected from the DataWorks Menu.
- * It checks if a 'Log' sheet exists, creating one if necessary, and sets up its header and formatting.
- * It also creates a 'Datasheet' with predefined questions if it doesn't exist.
- * It initializes global variables as properties and generates the sidebar content from 'Page.html'.
- * Finally, it logs unique users who have interacted with the sheet.
+ * showSidebar function runs when the Open Data Tool button is selected from the DataWorks Menu
+ * It checks if there is already a Log sheet, if not it creates one with the correct headings
+ * It also creates a filter for the Log columns
+ * It then sets the initial global variable values, which are stored as properties
+ * Properties can only store strings, so objects are converted to JSON strings first
+ * It generates the content for the sidebar by creating an HTMLOutput from the Page HTML file
+ * Also generates the Datasheets questions as a new sheet
  */
 function showSidebar() {
   console.log("Reached showSidebar");
-  //store the current users email in script properties
-  PropertiesService.getScriptProperties().setProperty("user", Session.getActiveUser().getEmail().toString())
   
-  // If the user prefers to log their name, retrieve it from properties
+  PropertiesService.getScriptProperties().setProperty("user", Session.getActiveUser().getEmail().toString())
   const logPreference = PropertiesService.getScriptProperties().getProperty("logPreference");
   if (logPreference === "name") {
     const userName = PropertiesService.getScriptProperties().getProperty("userName");
     const userEmail = PropertiesService.getScriptProperties().getProperty("userEmail");
     user = `${userName} (${userEmail})`; 
   }
-
-  // Get or create the 'Log' sheet
   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
   if (log == null) {
     log = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SpreadsheetApp.getActiveSpreadsheet().getNumSheets());
     log.setName('Log');
   }
-  // Create the 'Datasheet' if it doesn't exist
   createDatasheet();
-
-  // If the 'Log' sheet is empty, add the header row and format columns
   if (log.getLastRow() == 0) {
     log.appendRow(["Timestamp", "Cell", "Sheet", "Previous Value", "New Value", "Formula", "User", "Color", "Notes"]);
     log.setColumnWidth(1, 150.0);
@@ -239,7 +233,7 @@ function showSidebar() {
     row.setHorizontalAlignment('left');
     row.setBorder(false,false,true,false,false,false);
   }
-  // Create a filter for the 'Log' sheet if it doesn't exist
+  
   if(log.getFilter() == null) {
     createFilter();
   }
@@ -257,10 +251,10 @@ function showSidebar() {
 
 // Function to create the 'Datasheet' with predefined questions and formatting
 function createDatasheet(){
-  let datasheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Datasheet');
+  let datasheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Datasheet for Dataset Use and Distribution');
   if (datasheet == null) {
     datasheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(SpreadsheetApp.getActiveSpreadsheet().getNumSheets());
-    datasheet.setName('Datasheet');
+    datasheet.setName('Datasheet for Dataset Use and Distribution');
   }
 
   const headerFont = SpreadsheetApp.newTextStyle().setFontFamily("Arial").setFontSize(12).setBold(true).build();
@@ -474,10 +468,28 @@ function loadCell() {
 function onEdit(e){
   console.log(e);
   console.log("Reached onEdit");
+
+  var sheet = SpreadsheetApp.getActiveSheet();
+  console.log("Reached onEdit");
+  var editEvent = e;
+  editEvent.sheet = e.range.getSheet().getName();
+  var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
+
+  var user = PropertiesService.getScriptProperties().getProperty("user");
+  console.log(user);
+
+  const logPreference = PropertiesService.getScriptProperties().getProperty("logPreference");
+  if (logPreference === "name") {
+    const userName = PropertiesService.getScriptProperties().getProperty("userName");
+    const userEmail = PropertiesService.getScriptProperties().getProperty("userEmail");
+    user = `${userName} (${userEmail})`; 
+  }
+
   var currSheet = e.range.getSheet().getName();
   var formula = e.range.getFormula().toString();
   var cell = e.range.getA1Notation();
   var timestamp = new Date();
+
   if (changeType != null) {
     formula = changeType;
     changeType = null;
@@ -507,7 +519,8 @@ function onEdit(e){
     };
   }
   updateHistory(editEvent, historyObject);
-  }
+  logUniqueUsers();
+}
 
 /**
  * onSelectionChange function is automatically triggered by AppsScript when the user changes the cell that is currently selected
@@ -539,19 +552,16 @@ function updateHistory(editEvent, historyObject) {
   currSheet = editEvent.sheet;
   cell = range.getA1Notation();
   
-  if(currSheet in history == false) {
-    console.log("Reached new sheet in history");
-    history[currSheet] = {};
-    history[currSheet][cell] = [historyObject];
-  } else {
-    if(cell in history[currSheet] == false) {
-      console.log("Reached new history object");
-      history[currSheet][cell] = [historyObject];
-    } else {
-      console.log("Reached update of current history object");
-      history[currSheet][cell].push(historyObject);
-    }
+  // Ensure the sheet and cell exist in the history object
+  if (!(currSheet in history)) {
+   history[currSheet] = {};
   }
+  if (!(cell in history[currSheet])) {
+    history[currSheet][cell] = [];
+  }
+
+  // Append the new history object
+  history[currSheet][cell].push(historyObject); 
   properties.setProperty('history', JSON.stringify(history));
 }
 
@@ -566,6 +576,7 @@ function createFilter() {
   var criteria = SpreadsheetApp.newFilterCriteria();
   filter.setColumnFilterCriteria(1, criteria);
 }
+
 /**
  * cellHistory function is called by the loadCell function to get the updated history for a specific cell
  * It retrieves the current history object and seearches for the specific sheet and cell
