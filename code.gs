@@ -119,7 +119,7 @@ function viewNotes(){
   var noteList = '';
   for (row in data) {
     if (data[row][1] == id && data[row][2] == sheet) {
-      var note = data[row][9]
+      var note = data[row][8]
       if (note != "") {
         console.log(row)
         noteList = noteList + note + "\n";
