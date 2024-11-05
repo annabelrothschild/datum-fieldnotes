@@ -576,60 +576,6 @@ function updateHistory(editEvent, historyObject) {
 }
 
 
-
-
-
-// function updateHistory(editEvent, historyObject) {
-
-//   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log').getDataRange();
-
-//   console.log("Reached updateHistory");
-
-//   console.log('updateHistory called with editEvent: ', editEvent)
-
-
-
-//   const properties = PropertiesService.getScriptProperties();
-
-//   range = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(editEvent.sheet).getRange(editEvent.range.rowStart, editEvent.range.columnStart)
-
-//   currSheet = editEvent.sheet;
-
-//   cell = range.getA1Notation();
-
-//   tempHistory = JSON.parse(properties.getProperty('history'));
-
-//   if(currSheet in tempHistory == false) {
-
-//     console.log("Reached new sheet in history");
-
-//     tempHistory[currSheet] = {};
-
-//     tempHistory[currSheet][cell] = [historyObject];
-
-//   } else {
-
-//     if(cell in tempHistory[currSheet] == false) {
-
-//       console.log("Reached new history object");
-
-//       tempHistory[currSheet][cell] = [historyObject];
-
-//     } else {
-
-//       console.log("Reached update of current history object");
-
-//       tempHistory[currSheet][cell].push(historyObject);
-
-//     }
-
-//   }
-
-//   properties.setProperty('history', JSON.stringify(tempHistory));
-
-// }
-
-
 /**
  * createFilter function is called when creating the Log sheet
  * It creates a filter for the entire active dataRange
