@@ -28,6 +28,7 @@ function viewSettings(){
   console.log("form recieved");
 }
 
+
 /** Get user preference (from PropertiesService) 
  * called from settings Dialog page and stores users preference in properties 
 **/
@@ -47,7 +48,6 @@ function saveUserPreference(form) {
     userEmail: userEmail
   });
 }
-
 
 /**
  * This function logs the users that have worked on the sheet to the Datasheet for Dataset Page
@@ -101,6 +101,7 @@ function setColor(color){
   PropertiesService.getScriptProperties().setProperty("colorSet", color);
 }
 
+
 /**
  * Displays notes associated with the currently selected cell in a modal dialog.
  * Retrieves notes from the 'Log' sheet based on cell and sheet name.
@@ -132,6 +133,8 @@ function viewNotes(){
     '<textarea style="height:200px;width:250px;font-size:10pt;" type="text" id="notes" name="notes" TextMode="MultiLine"></textarea>').setWidth(300).setHeight(300).setContent(noteList.replace(/\n/g, "<br><br/>"))
     ui.showModalDialog(htmlOutput, "Notes")
 }
+
+
 
 /**
  * Main function for writing notes; called from page.html in noteDisplay when a 
@@ -168,6 +171,7 @@ function writeNote(row, note){
   var cell = ss.getCurrentCell();
   cell.setBorder(true, true, true, true, false, false, color, SpreadsheetApp.BorderStyle.SOLID_THICK); 
 }
+
 
 /**
  * Script side function for general notes. Will create a new log entry with a change
@@ -249,7 +253,6 @@ function showSidebar() {
   logUniqueUsers();
 }
 
-// Function to create the 'Datasheet' with predefined questions and formatting
 function createDatasheet(){
   let datasheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Datasheet for Dataset Use and Distribution');
   if (datasheet == null) {
@@ -436,125 +439,130 @@ function createDatasheet(){
 }
 
 /**
- * loadCell function is called from the HTML file to check if the data has changed at all
- * It gets all the information for the currently selected cell and necessary global properties
- * Then cellChanged global variable is set to false
- * Then a cell object is returned to the HTML with all of the updated cell info
- */
+ * loadCell function is called from the HTML file to check if the data has changed at all
+ * It gets all the information for the currently selected cell and necessary global properties
+ * Then cellChanged global variable is set to false
+ * Then a cell object is returned to the HTML with all of the updated cell info
+ */
 function loadCell() {
-  sheet = SpreadsheetApp.getActiveSheet();
-  cell = sheet.getCurrentCell();
-  row = cell.getRow();
-  col = cell.getColumn();
-  currValue = cell.getValue();
-  cellChanged = false;
-  var id = cell.getA1Notation();
-  const properties = PropertiesService.getScriptProperties();
-  cellChanged = properties.getProperty('cellChanged');
-  properties.setProperty('cellChanged', false);
-  history = cellHistory(sheet.getCurrentCell());
-  returnObj = {id: id, row: row, col: col, currValue: currValue, history: history, cellChanged: cellChanged};
-  console.log('loadCell return obj: ', returnObj)
-  return returnObj;
+  sheet = SpreadsheetApp.getActiveSheet();
+  cell = sheet.getCurrentCell();
+  row = cell.getRow();
+  col = cell.getColumn();
+  currValue = cell.getValue();
+  cellChanged = false;
+  var id = cell.getA1Notation();
+  const properties = PropertiesService.getScriptProperties();
+  cellChanged = properties.getProperty('cellChanged');
+  properties.setProperty('cellChanged', false);
+  history = cellHistory(sheet.getCurrentCell());
+  returnObj = {id: id, row: row, col: col, currValue: currValue, history: history, cellChanged: cellChanged};
+  console.log('loadCell return obj: ', returnObj)
+  return returnObj;
+}
+/**
+ * Work in progress function for logging change types as a means of
+keeping track of row/column deletion
+ */
+
+function installOnChangeTrigger() {
+  ScriptApp.newTrigger("onChange")
+    .forSpreadsheet(SpreadsheetApp.getActive())
+    .onChange()
+    .create();
 }
 
-/**
- * onEdit function is automatically triggered by AppsScript when a change is made in the spreadsheet
- * The edit event object e is manipulated slightly
- * Then a new row is added to the log with the corresponding event info
- * Then the updateHistory function is called with the modified event object
- */
+var changeType;
 
+/**
+ * onEdit function is automatically triggered by AppsScript when a change is made in the spreadsheet
+ * The edit event object e is manipulated slightly
+ * Then a new row is added to the log with the corresponding event info
+ * Then the updateHistory function is called with the modified event object
+ */
 function onEdit(e){
-  console.log(e);
-  console.log("Reached onEdit");
+  console.log(e);
+  console.log("Reached onEdit");
+  var sheet = SpreadsheetApp.getActiveSheet();
+  console.log("Reached onEdit");
+  var editEvent = e;
+  editEvent.sheet = e.range.getSheet().getName();
+  var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
+  var user = PropertiesService.getScriptProperties().getProperty("user");
+  console.log(user);
 
-  var sheet = SpreadsheetApp.getActiveSheet();
-  console.log("Reached onEdit");
-  var editEvent = e;
-  editEvent.sheet = e.range.getSheet().getName();
-  var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log');
+  const logPreference = PropertiesService.getScriptProperties().getProperty("logPreference");
+  if (logPreference === "name") {
+    const userName = PropertiesService.getScriptProperties().getProperty("userName");
+    const userEmail = PropertiesService.getScriptProperties().getProperty("userEmail");
+    user = `${userName} (${userEmail})`; 
+  }
 
-  var user = PropertiesService.getScriptProperties().getProperty("user");
-  console.log(user);
+  var currSheet = e.range.getSheet().getName();
+  var formula = e.range.getFormula().toString();
+  var cell = e.range.getA1Notation();
+  var timestamp = new Date();
 
-  const logPreference = PropertiesService.getScriptProperties().getProperty("logPreference");
-  if (logPreference === "name") {
-    const userName = PropertiesService.getScriptProperties().getProperty("userName");
-    const userEmail = PropertiesService.getScriptProperties().getProperty("userEmail");
-    user = `${userName} (${userEmail})`; 
-  }
-
-  var currSheet = e.range.getSheet().getName();
-  var formula = e.range.getFormula().toString();
-  var cell = e.range.getA1Notation();
-  var timestamp = new Date();
-
-  if (changeType != null) {
-    formula = changeType;
-    changeType = null;
-  } else {
-    if (formula == '') {
-      formula = 'Manual Entry'
-    } else {
-      if (formula[0] == "=") {
-        formula = formula.replace(/=/, "")
-      }
-    }
-  }
-  if(currSheet != 'Log' && currSheet != "Datasheet") {
-    log.appendRow([timestamp, cell, currSheet, e.oldValue, sheet.getCurrentCell().getValue(), formula, user]);
-    var rowNum = log.getLastRow();
-    /**
-     * Moved History update to pull from the log values.
-     */
-    var historyObject = {
-      row: rowNum,
-      timestamp: timestamp,
-      oldValue: e.oldValue,
-      newValue: sheet.getCurrentCell().getValue(),
-      formula: formula,
-      user: user,
-      cell: cell
-    };
-  }
-  updateHistory(editEvent, historyObject);
-  logUniqueUsers();
+  if (changeType != null) {
+    formula = changeType;
+    changeType = null;
+  } else {
+    if (formula == '') {
+      formula = 'Manual Entry'
+    } else {
+      if (formula[0] == "=") {
+        formula = formula.replace(/=/, "")
+      }
+    }
+  }
+  if(currSheet != 'Log' && currSheet != "Datasheet") {
+    log.appendRow([timestamp, cell, currSheet, e.oldValue, sheet.getCurrentCell().getValue(), formula, user]);
+    var rowNum = log.getLastRow();
+    /**
+     *Moved History update to pull from the log values.
+     */
+    var historyObject = {
+      row: rowNum,
+      timestamp: timestamp,
+      oldValue: e.oldValue,
+      newValue: sheet.getCurrentCell().getValue(),
+      formula: formula,
+      user: user,
+      cell: cell
+    };
+  }
+  updateHistory(editEvent, historyObject);
+  logUniqueUsers();
 }
 
 /**
- * onSelectionChange function is automatically triggered by AppsScript when the user changes the cell that is currently selected
- * This function sets the global cellChanged variable to true
- */
+ * onSelectionChange function is automatically triggered by AppsScript when the user changes the cell that is currently selected
+ * This function sets the global cellChanged variable to true
+ */
 function onSelectionChange(e) {
-  loadCell();
-  console.log("Reached onSelection");
-  const properties = PropertiesService.getScriptProperties()
-  properties.setProperty('cellChanged', true)
+  loadCell();
+  console.log("Reached onSelection");
+  const properties = PropertiesService.getScriptProperties()
+  properties.setProperty('cellChanged', true)
 }
 
-/**
- * updatehistory function is called when the onEdit trigger has fired
- * It creates a history object using the info from the editEvent object and the corresponding range
- * It retrieves the history object from the global history property
- * If the current sheet and cell already exist in history, then the historyObj is just added to the corresponding array
- * If either of these don't already exist, then the historyObj is added to a new empty array for the corresponding cell
- */
+
 function updateHistory(editEvent, historyObject) {
-  var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log').getDataRange();
   console.log("Reached updateHistory");
   console.log('updateHistory called with editEvent: ', editEvent);
 
   const properties = PropertiesService.getScriptProperties();
   let history = JSON.parse(properties.getProperty('history') || '{}');
 
-  range = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(editEvent.sheet).getRange(editEvent.range.rowStart, editEvent.range.columnStart)
-  currSheet = editEvent.sheet;
-  cell = range.getA1Notation();
-  
+  // Get the range and cell notation from the editEvent
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(editEvent.sheet);
+  const range = sheet.getRange(editEvent.range.rowStart, editEvent.range.columnStart);
+  const currSheet = editEvent.sheet;
+  const cell = range.getA1Notation();
+
   // Ensure the sheet and cell exist in the history object
   if (!(currSheet in history)) {
-   history[currSheet] = {};
+    history[currSheet] = {};
   }
   if (!(cell in history[currSheet])) {
     history[currSheet][cell] = [];
@@ -562,8 +570,65 @@ function updateHistory(editEvent, historyObject) {
 
   // Append the new history object
   history[currSheet][cell].push(historyObject); 
+
+  // Save the updated history
   properties.setProperty('history', JSON.stringify(history));
 }
+
+
+
+
+
+// function updateHistory(editEvent, historyObject) {
+
+//   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log').getDataRange();
+
+//   console.log("Reached updateHistory");
+
+//   console.log('updateHistory called with editEvent: ', editEvent)
+
+
+
+//   const properties = PropertiesService.getScriptProperties();
+
+//   range = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(editEvent.sheet).getRange(editEvent.range.rowStart, editEvent.range.columnStart)
+
+//   currSheet = editEvent.sheet;
+
+//   cell = range.getA1Notation();
+
+//   tempHistory = JSON.parse(properties.getProperty('history'));
+
+//   if(currSheet in tempHistory == false) {
+
+//     console.log("Reached new sheet in history");
+
+//     tempHistory[currSheet] = {};
+
+//     tempHistory[currSheet][cell] = [historyObject];
+
+//   } else {
+
+//     if(cell in tempHistory[currSheet] == false) {
+
+//       console.log("Reached new history object");
+
+//       tempHistory[currSheet][cell] = [historyObject];
+
+//     } else {
+
+//       console.log("Reached update of current history object");
+
+//       tempHistory[currSheet][cell].push(historyObject);
+
+//     }
+
+//   }
+
+//   properties.setProperty('history', JSON.stringify(tempHistory));
+
+// }
+
 
 /**
  * createFilter function is called when creating the Log sheet
@@ -574,14 +639,14 @@ function createFilter() {
   var log = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Log').getDataRange();
   var filter = log.createFilter();
   var criteria = SpreadsheetApp.newFilterCriteria();
-  filter.setColumnFilterCriteria(1, criteria);
+  filter.setColumnFilterCriteria(1, criteria); 
 }
 
 /**
  * cellHistory function is called by the loadCell function to get the updated history for a specific cell
- * It retrieves the current history object and seearches for the specific sheet and cell
+ * It retrieves the current history object and searches for the specific sheet and cell
  * If the cell exists in the history object, it returns that array
- * If not, it returns and empty array
+ * If not, it returns an empty array
  */
 function cellHistory(cell) {
   const properties = PropertiesService.getScriptProperties();
@@ -593,5 +658,3 @@ function cellHistory(cell) {
 
   return allHistory[sheetName]?.[cellNotation] || [];
 }
-
-
